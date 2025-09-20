@@ -500,10 +500,29 @@
                 // Show loading state
                 document.querySelector('.content').innerHTML = '<div style="text-align: center; padding: 40px;"><p>Generating your summary...</p></div>';
                 
-                const response = await fetch(`/api/summary/${sessionId}`);
+                // Get conversation history from browser storage
+                const conversationHistory = loadConversationFromStorage();
+                
+                if (!conversationHistory || conversationHistory.length === 0) {
+                    throw new Error('No conversation history found. Please return to chat.');
+                }
+                
+                console.log(`📋 Generating summary with ${conversationHistory.length} messages from browser storage`);
+                
+                // Send conversation history directly to summary endpoint
+                const response = await fetch('/api/summary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        conversation_history: conversationHistory
+                    })
+                });
                 
                 if (!response.ok) {
-                    throw new Error('Failed to load summary');
+                    throw new Error('Failed to generate summary');
                 }
                 
                 summaryData = await response.json();
