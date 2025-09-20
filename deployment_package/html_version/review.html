@@ -463,6 +463,19 @@
         let sessionId = null;
         let summaryData = null;
         
+        // Browser storage functions for session persistence (same as chat.html)
+        function loadConversationFromStorage() {
+            if (sessionId) {
+                const saved = localStorage.getItem(`conversation_${sessionId}`);
+                if (saved) {
+                    const conversationHistory = JSON.parse(saved);
+                    console.log('🔄 Restored conversation from browser storage for summary');
+                    return conversationHistory;
+                }
+            }
+            return null;
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             // Get session ID from URL parameter
             const urlParams = new URLSearchParams(window.location.search);
