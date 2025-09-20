@@ -253,7 +253,7 @@
                 const keysToRemove = [];
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
-                    if (key && key.startsWith('conversation_')) {
+                    if (key && (key.startsWith('conversation_') || key === 'current_session_id')) {
                         keysToRemove.push(key);
                     }
                 }
