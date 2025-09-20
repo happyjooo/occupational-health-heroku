@@ -96,6 +96,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+    conversation_history: Optional[List[Dict[str, str]]] = None
 
 class ChatResponse(BaseModel):
     response: str
@@ -180,26 +181,25 @@ async def chat_endpoint(request: ChatRequest):
                 print(f"🔄 Restored session {session_id} from file")
         
         if session_id not in sessions:
-            # Start new session
-            sessions[session_id] = {
-                'conversation_history': [],
-                'created_at': datetime.now(),
-                'summary': None
-            }
-            
-            # Get opening message from Dr. O
-            opening_response = conversation_manager.start_interview()
-            sessions[session_id]['conversation_history'].append(opening_response)
-            
-            # Save new session immediately
-            save_session(session_id, sessions[session_id])
-            print(f"💾 Created and saved new session {session_id}")
-            
-            return ChatResponse(
-                response=opening_response['content'],
-                session_id=session_id,
-                is_complete=False
-            )
+            # Check if browser sent conversation history as backup
+            if request.conversation_history and len(request.conversation_history) > 0:
+                print(f"🔄 Session {session_id} lost on server, restoring from browser storage")
+                # Restore session from browser history
+                sessions[session_id] = {
+                    'conversation_history': request.conversation_history,
+                    'created_at': datetime.now(),
+                    'summary': None
+                }
+                save_session(session_id, sessions[session_id])
+            else:
+                # This should only happen for genuinely new sessions
+                print(f"⚠️ WARNING: Session {session_id} not found and no browser history provided")
+                
+                # Return an error instead of silently creating new session
+                raise HTTPException(
+                    status_code=410, 
+                    detail="Session expired or lost. Please refresh the page to start a new conversation."
+                )
         
         # Add user message to conversation
         user_message = {"role": "user", "content": request.message}
@@ -358,13 +358,28 @@ async def send_summary(request: SummaryRequest):
             'sent_at': datetime.now().isoformat()
         }
         
+        # After successful email send, clean up session data for privacy
+        cleanup_success = False
+        try:
+            if session_id in sessions:
+                del sessions[session_id]
+            # Also remove session file
+            session_file = SESSIONS_DIR / f"session_{session_id}.json"
+            if session_file.exists():
+                session_file.unlink()
+            print(f"🗑️ Cleaned up session {session_id} after successful email send")
+            cleanup_success = True
+        except Exception as cleanup_error:
+            print(f"⚠️ Error cleaning up session: {cleanup_error}")
+        
         return {
             'success': True,
             'message': 'Detailed analysis sent successfully to doctor',
             'doctor_name': request.doctor_name,
             'doctor_clinic': request.doctor_clinic,
             'doctor_email': request.doctor_email,
-            'pdf_path': pdf_path
+            'pdf_path': pdf_path,
+            'cleanup_completed': cleanup_success
         }
         
     except Exception as e:
