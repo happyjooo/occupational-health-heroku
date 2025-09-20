@@ -87,13 +87,6 @@ class GeminiClient:
                     conversation_text += "- Apply principles and JEM logic dynamically to what they just said\n"
                     conversation_text += "- Ask expert-driven questions, not generic 'tell me about your tasks'\n\n"
                     conversation_text += "Dr. O:"
-                    
-                    # Debug: Log conversation context before sending to LLM
-                    print("="*50)
-                    print("🔍 DEBUG: CONVERSATION SENT TO LLM")
-                    print(f"📏 Length: {len(conversation_text)} characters")
-                    print(f"📝 Last 500 chars: ...{conversation_text[-500:]}")
-                    print("="*50)
                 else:  # patient role
                     conversation_text += "\nBased on the conversation history above, provide the patient's response to Dr. O's question. Respond naturally as the patient character:\n\n"
                     conversation_text += "Patient:"
@@ -111,22 +104,22 @@ class GeminiClient:
             print(f"📝 Last 500 chars: ...{conversation_text[-500:]}")
             print("="*50)
             
-        # Generate response with concise, structured output
-        response = self.client.models.generate_content(
-            model=self.model_name,
-            contents=conversation_text,
-            config=genai.types.GenerateContentConfig(
-                temperature=0.6,  # Balanced for focused but flexible responses
-                max_output_tokens=800,  # Reasonable limit that allows flexibility when needed
-                top_p=0.8,  # Allow some creativity for medical contexts
-                thinking_config=genai.types.ThinkingConfig(thinking_budget=0)  # Disable thinking for speed
+            # Generate response with concise, structured output
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=conversation_text,
+                config=genai.types.GenerateContentConfig(
+                    temperature=0.6,  # Balanced for focused but flexible responses
+                    max_output_tokens=800,  # Reasonable limit that allows flexibility when needed
+                    top_p=0.8,  # Allow some creativity for medical contexts
+                    thinking_config=genai.types.ThinkingConfig(thinking_budget=0)  # Disable thinking for speed
+                )
             )
-        )
-        
-        # Debug: Log LLM response
-        print("🤖 DEBUG: LLM RESPONSE")
-        print(f"📤 Response: {response.text[:200]}...")
-        print("="*50)
+            
+            # Debug: Log LLM response
+            print("🤖 DEBUG: LLM RESPONSE")
+            print(f"📤 Response: {response.text[:200]}...")
+            print("="*50)
             
             # Post-processing: monitor response length but don't truncate
             response_text = response.text.strip()
@@ -286,3 +279,4 @@ def get_vertex_ai_client() -> VertexAIClient:
     if vertex_ai_client is None:
         vertex_ai_client = VertexAIClient()
     return vertex_ai_client
+
