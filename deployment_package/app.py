@@ -42,45 +42,7 @@ app.add_middleware(
 conversation_manager = ConversationManager()
 pdf_generator = PDFGenerator()
 
-# Store active sessions with file persistence for Heroku
-import json
-import tempfile
-from pathlib import Path
-
-# Create sessions directory in temp
-SESSIONS_DIR = Path(tempfile.gettempdir()) / "heroku_sessions"
-SESSIONS_DIR.mkdir(exist_ok=True)
-
-def load_session(session_id: str) -> dict:
-    """Load session from file"""
-    session_file = SESSIONS_DIR / f"session_{session_id}.json"
-    if session_file.exists():
-        try:
-            with open(session_file, 'r') as f:
-                data = json.load(f)
-                # Convert created_at string back to datetime
-                if 'created_at' in data:
-                    data['created_at'] = datetime.fromisoformat(data['created_at'])
-                return data
-        except Exception as e:
-            print(f"⚠️ Error loading session {session_id}: {e}")
-    return None
-
-def save_session(session_id: str, session_data: dict):
-    """Save session to file"""
-    session_file = SESSIONS_DIR / f"session_{session_id}.json"
-    try:
-        # Convert datetime to string for JSON serialization
-        data_to_save = session_data.copy()
-        if 'created_at' in data_to_save:
-            data_to_save['created_at'] = data_to_save['created_at'].isoformat()
-        
-        with open(session_file, 'w') as f:
-            json.dump(data_to_save, f, indent=2)
-    except Exception as e:
-        print(f"⚠️ Error saving session {session_id}: {e}")
-
-# In-memory cache for faster access
+# Store active sessions (in production, use Redis or database)
 sessions = {}
 
 # Email configuration
@@ -96,7 +58,6 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
-    conversation_history: Optional[List[Dict[str, str]]] = None
 
 class ChatResponse(BaseModel):
     response: str
@@ -173,55 +134,23 @@ async def chat_endpoint(request: ChatRequest):
         # Get or create session
         session_id = request.session_id or str(uuid.uuid4())
         
-        # Try to load session from memory first, then from file
         if session_id not in sessions:
-            loaded_session = load_session(session_id)
-            if loaded_session:
-                sessions[session_id] = loaded_session
-                print(f"🔄 Restored session {session_id} from file")
-        
-        if session_id not in sessions:
-            # Check if browser sent conversation history as backup
-            if request.conversation_history and len(request.conversation_history) > 0:
-                print(f"🔄 Session {session_id} lost on server, restoring from browser storage")
-                # Restore session from browser history
-                sessions[session_id] = {
-                    'conversation_history': request.conversation_history,
-                    'created_at': datetime.now(),
-                    'summary': None
-                }
-                save_session(session_id, sessions[session_id])
-            else:
-                # Handle new session creation (when no session exists and no history provided)
-                if not request.session_id or request.message == '':
-                    # This is a genuine new session - create it
-                    print(f"🆕 Creating new session {session_id}")
-                    sessions[session_id] = {
-                        'conversation_history': [],
-                        'created_at': datetime.now(),
-                        'summary': None
-                    }
-                    
-                    # Get opening message from Dr. O
-                    opening_response = conversation_manager.start_interview()
-                    sessions[session_id]['conversation_history'].append(opening_response)
-                    
-                    # Save new session immediately
-                    save_session(session_id, sessions[session_id])
-                    print(f"💾 Created and saved new session {session_id}")
-                    
-                    return ChatResponse(
-                        response=opening_response['content'],
-                        session_id=session_id,
-                        is_complete=False
-                    )
-                else:
-                    # This is a lost session with a real message
-                    print(f"⚠️ WARNING: Session {session_id} lost and no browser history provided")
-                    raise HTTPException(
-                        status_code=410, 
-                        detail="Session expired or lost. Please refresh the page to start a new conversation."
-                    )
+            # Start new session
+            sessions[session_id] = {
+                'conversation_history': [],
+                'created_at': datetime.now(),
+                'summary': None
+            }
+            
+            # Get opening message from Dr. O
+            opening_response = conversation_manager.start_interview()
+            sessions[session_id]['conversation_history'].append(opening_response)
+            
+            return ChatResponse(
+                response=opening_response['content'],
+                session_id=session_id,
+                is_complete=False
+            )
         
         # Add user message to conversation
         user_message = {"role": "user", "content": request.message}
@@ -239,9 +168,6 @@ async def chat_endpoint(request: ChatRequest):
             # Add AI response to conversation if not complete
             sessions[session_id]['conversation_history'].append(ai_response)
         
-        # Save session after each interaction
-        save_session(session_id, sessions[session_id])
-        
         return ChatResponse(
             response=ai_response['content'],
             session_id=session_id,
@@ -258,14 +184,8 @@ async def get_summary(session_id: str):
     Generate and return summary for a session
     """
     try:
-        # Try to load session from memory first, then from file
         if session_id not in sessions:
-            loaded_session = load_session(session_id)
-            if loaded_session:
-                sessions[session_id] = loaded_session
-                print(f"🔄 Restored session {session_id} from file for summary")
-            else:
-                raise HTTPException(status_code=404, detail="Session not found")
+            raise HTTPException(status_code=404, detail="Session not found")
         
         # Generate summary if not already done
         if not sessions[session_id].get('summary'):
@@ -335,16 +255,7 @@ async def send_summary(request: SummaryRequest):
         
         # Generate PDF with doctor summary (now includes appended notes if any)
         pdf_filename = f"occupational_health_analysis_{request.session_id}_{int(datetime.now().timestamp())}.pdf"
-        
-        # Create temp directory for PDFs if it doesn't exist
-        temp_dir = "temp_pdfs"
-        os.makedirs(temp_dir, exist_ok=True)
-        pdf_path = os.path.join(temp_dir, pdf_filename)
-        
-        # Generate PDF
-        pdf_bytes = pdf_generator.generate_pdf(doctor_summary_text)
-        with open(pdf_path, 'wb') as f:
-            f.write(pdf_bytes)
+        pdf_path = pdf_generator.save_pdf_to_file(doctor_summary_text, pdf_filename)
         
         # Send email with PDF attachment (if password is set)
         if SMTP_PASSWORD:
@@ -357,19 +268,11 @@ async def send_summary(request: SummaryRequest):
             
             if not email_sent:
                 print("⚠️ Email sending failed, but PDF was generated")
-            else:
-                # Clean up PDF file after successful email send
-                try:
-                    os.remove(pdf_path)
-                    print("🗑️ Temporary PDF file cleaned up")
-                except Exception as e:
-                    print(f"⚠️ Could not delete temp PDF: {e}")
         else:
             print("⚠️ No email password set - PDF generated but not sent")
             print(f"📄 PDF saved to: {pdf_path}")
             print(f"📧 To enable email: export EMAIL_PASSWORD='your_app_password'")
             print(f"📧 Then restart the server")
-            print("⚠️ PDF will remain in temp_pdfs/ until email is configured")
         
         # Store send information
         session_data['sent_to'] = {
@@ -380,28 +283,13 @@ async def send_summary(request: SummaryRequest):
             'sent_at': datetime.now().isoformat()
         }
         
-        # After successful email send, clean up session data for privacy
-        cleanup_success = False
-        try:
-            if session_id in sessions:
-                del sessions[session_id]
-            # Also remove session file
-            session_file = SESSIONS_DIR / f"session_{session_id}.json"
-            if session_file.exists():
-                session_file.unlink()
-            print(f"🗑️ Cleaned up session {session_id} after successful email send")
-            cleanup_success = True
-        except Exception as cleanup_error:
-            print(f"⚠️ Error cleaning up session: {cleanup_error}")
-        
         return {
             'success': True,
             'message': 'Detailed analysis sent successfully to doctor',
             'doctor_name': request.doctor_name,
             'doctor_clinic': request.doctor_clinic,
             'doctor_email': request.doctor_email,
-            'pdf_path': pdf_path,
-            'cleanup_completed': cleanup_success
+            'pdf_path': pdf_path
         }
         
     except Exception as e:
