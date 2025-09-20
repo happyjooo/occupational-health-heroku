@@ -246,6 +246,31 @@
             }, 300);
             
             console.log('Summary successfully sent to healthcare provider');
+            
+            // Clean up browser storage - conversation data no longer needed
+            try {
+                // Get all localStorage keys and remove conversation data
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('conversation_')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                
+                keysToRemove.forEach(key => {
+                    localStorage.removeItem(key);
+                    console.log(`🗑️ Cleaned up ${key} from browser storage`);
+                });
+                
+                if (keysToRemove.length > 0) {
+                    console.log('✅ All conversation data cleared for privacy');
+                } else {
+                    console.log('ℹ️ No conversation data found to clean up');
+                }
+            } catch (error) {
+                console.error('⚠️ Error cleaning up browser storage:', error);
+            }
         });
     </script>
 </body>
