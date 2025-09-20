@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Summary - Occupational Health Screen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background-color: #ffffff;
+            color: #0f172a;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 768px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            background: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .content {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .summary-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .summary-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+
+        .summary-subtitle {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 20px;
+        }
+
+        .job-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: white;
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .job-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+            flex: 1;
+        }
+
+        .job-badge {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .job-industry {
+            font-style: italic;
+            color: #334155;
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+
+        .task-list {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+
+        .task-list li {
+            padding: 4px 0;
+            position: relative;
+            padding-left: 20px;
+            color: #374151;
+        }
+
+        .task-list li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #64748b;
+        }
+
+
+
+        .form-section {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .checkbox {
+            margin-top: 2px;
+            transform: scale(1.1);
+        }
+
+        .checkbox-label {
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-select:disabled {
+            background: #f9fafb;
+            color: #9ca3af;
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            text-decoration: none;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #1d4ed8;
+        }
+
+        .btn-primary:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        .help-text a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .help-text a:hover {
+            text-decoration: underline;
+        }
+
+        .notes-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.5;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .notes-textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .notes-textarea::placeholder {
+            color: #9ca3af;
+        }
+
+        .section-subtitle {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .character-count {
+            text-align: right;
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .character-count.warning {
+            color: #dc2626;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                max-width: 480px;
+            }
+            
+            .job-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+        }
+
+        /* Natural markdown styling for bullet points */
+        #summary-content ul {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        #summary-content ul li {
+            margin: 4px 0;
+            line-height: 1.5;
+            display: list-item;
+            list-style-position: outside;
+        }
+
+        #summary-content ul li::marker {
+            font-size: 10px;
+            color: #64748b;
+        }
+
+        /* Fix sub-bullet alignment - target nested lists */
+        #summary-content ul ul li {
+            position: relative;
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        #summary-content ul ul li::before {
+            content: "○";
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 9px;
+            color: #94a3b8;
+            line-height: 1;
+        }
+
+        #summary-content h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0f172a;
+            margin: 16px 0 8px 0;
+        }
+
+        #summary-content h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+            margin: 12px 0 6px 0;
+        }
+
+        #summary-content p {
+            margin: 4px 0;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Review Your Summary</h1>
+            <p>Session ID: X4T7P2 • Interview Date: August 13, 2025</p>
+        </div>
+        
+        <div class="content">
+            <div class="summary-card">
+                <div class="summary-title">Occupational History Summary</div>
+                <div class="summary-subtitle">Please review the details below. If it looks correct, confirm and select your doctor to send the summary.</div>
+            </div>
+            
+            <!-- Job 1 -->
+            <div class="job-card">
+                <div class="job-header">
+                    <div class="job-title">Construction Worker, 2015–2018</div>
+                    <div class="job-badge">Job 1</div>
+                </div>
+                <div class="job-industry">Residential Construction</div>
+                
+                <div class="section-title">Key Tasks</div>
+                <ul class="task-list">
+                    <li>Framing wooden structures for houses</li>
+                    <li>Installing drywall and finishing surfaces</li>
+                    <li>Basic electrical work and wiring</li>
+                    <li>Site preparation and cleanup</li>
+                </ul>
+                
+                <div class="exposure-alert">
+                    <div class="exposure-header">
+                        <span style="color: #dc2626; font-size: 18px;">⚠️</span>
+                        <div class="exposure-title">AI-Flagged Potential Exposures</div>
+                    </div>
+                    <div class="exposure-chips">
+                        <span class="exposure-chip">Wood Dust</span>
+                        <span class="exposure-chip">Crystalline Silica Dust</span>
+                        <span class="exposure-chip">Loud Noise</span>
+                        <span class="exposure-chip">Electrical Hazards</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Job 2 -->
+            <div class="job-card">
+                <div class="job-header">
+                    <div class="job-title">Office Administrator, 2018–2023</div>
+                    <div class="job-badge">Job 2</div>
+                </div>
+                <div class="job-industry">Office Work</div>
+                
+                <div class="section-title">Key Tasks</div>
+                <ul class="task-list">
+                    <li>Data entry and computer work</li>
+                    <li>Filing and document management</li>
+                    <li>Phone support and customer service</li>
+                    <li>Meeting scheduling and coordination</li>
+                </ul>
+                
+                <div class="exposure-alert">
+                    <div class="exposure-header">
+                        <span style="color: #dc2626; font-size: 18px;">⚠️</span>
+                        <div class="exposure-title">AI-Flagged Potential Exposures</div>
+                    </div>
+                    <div class="exposure-chips">
+                        <span class="exposure-chip">Ergonomic Strain (RSI)</span>
+                        <span class="exposure-chip">Indoor Air Quality</span>
+                        <span class="exposure-chip">Eye Strain</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Confirmation Form -->
+            <div class="form-section">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="agree-checkbox" class="checkbox" />
+                    <label for="agree-checkbox" class="checkbox-label">
+                        I confirm this summary looks accurate and I agree to send it to my selected doctor.
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label for="doctor-select" class="form-label">Select your doctor</label>
+                    <select id="doctor-select" class="form-select" disabled>
+                        <option value="">Choose a doctor...</option>
+                        <option value="ryan">Dr Ryan • Monash University</option>
+                        <option value="cj">Chun Joo (CJ) • Research Team</option>
+                    </select>
+                </div>
+                
+                <a href="./success.html" id="send-btn" class="btn btn-primary" style="pointer-events: none; opacity: 0.5;">
+                    📤 Send Summary
+                </a>
+                
+                <p class="help-text">
+                    If something looks wrong, you can <a href="./chat.html">go back to the chat</a> and edit your answers, then regenerate the summary.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = null;
+        let summaryData = null;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get session ID from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            sessionId = urlParams.get('session');
+            
+            if (!sessionId) {
+                console.error('No session ID provided');
+                // Redirect back to chat if no session
+                window.location.href = './chat.html';
+                return;
+            }
+            
+            // Load summary data
+            loadSummary();
+            
+            // Set up form interactions
+            setupFormInteractions();
+        });
+        
+        async function loadSummary() {
+            try {
+                // Show loading state
+                document.querySelector('.content').innerHTML = '<div style="text-align: center; padding: 40px;"><p>Generating your summary...</p></div>';
+                
+                const response = await fetch(`/api/summary/${sessionId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load summary');
+                }
+                
+                summaryData = await response.json();
+                displaySummary();
+                
+            } catch (error) {
+                console.error('Error loading summary:', error);
+                document.querySelector('.content').innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <p style="color: #dc2626;">Error loading summary. Please try again.</p>
+                        <a href="./chat.html" style="color: #2563eb;">Return to Chat</a>
+                    </div>
+                `;
+            }
+        }
+        
+        function displaySummary() {
+            const content = document.querySelector('.content');
+            
+            // Generate current date for session info
+            const currentDate = new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            
+            // Update header with session info
+            document.querySelector('.header p').textContent = `Session ID: ${sessionId.substring(0, 8)} • Interview Date: ${currentDate}`;
+            
+            content.innerHTML = `
+                <div class="summary-card">
+                    <div class="summary-title">Occupational History Summary</div>
+                    <div class="summary-subtitle">Please review the details below. If it looks correct, confirm and select your doctor to send the summary.</div>
+                </div>
+                
+                <div class="job-card">
+                    <div class="job-header">
+                        <div class="job-title">Your Work History Summary</div>
+                        <div class="job-badge">Generated</div>
+                    </div>
+                    <div class="job-industry">Based on your conversation with Dr. O</div>
+                    
+                    <div class="section-title">Summary Details</div>
+                    <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 20px; line-height: 1.6;" id="summary-content"></div>
+                </div>
+                
+                <!-- Additional Notes Section -->
+                <div class="form-section">
+                    <div class="section-title">📝 Additional Notes (Optional)</div>
+                    <div class="section-subtitle">Any corrections, clarifications, or additional information you'd like to include for your doctor:</div>
+                    <textarea 
+                        id="additional-notes" 
+                        class="notes-textarea" 
+                        placeholder="Example: I forgot to mention that I also worked with asbestos insulation in the early 1980s, or I think the dates for my construction job were actually 1985-1990, not what I said earlier..."
+                        maxlength="2000"
+                    ></textarea>
+                    <div class="character-count">
+                        <span id="char-count">0</span>/2000 characters
+                    </div>
+                </div>
+                
+                <!-- Confirmation Form -->
+                <div class="form-section">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="agree-checkbox" class="checkbox" />
+                        <label for="agree-checkbox" class="checkbox-label">
+                            I confirm this summary looks accurate and I agree to send it to my selected doctor.
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="doctor-select" class="form-label">Select your doctor</label>
+                        <select id="doctor-select" class="form-select" disabled>
+                            <option value="">Choose a doctor...</option>
+                            <option value="Dr Ryan|Monash University|ryan.hoy@monash.edu">Dr Ryan • Monash University</option>
+                            <option value="Prof Khoa|Monash University|khoa.cao@monash.edu">Prof Khoa • Monash University</option>
+                            <option value="Chun Joo (CJ)|Research Team|gohchunjoo000@gmail.com">Chun Joo (CJ) • Research Team</option>
+                        </select>
+                    </div>
+                    
+                    <button id="send-btn" class="btn btn-primary" style="pointer-events: none; opacity: 0.5;" disabled>
+                        📤 Send Summary
+                    </button>
+                    
+                    <p class="help-text">
+                        If something looks wrong, you can <a href="./chat.html">go back to the chat</a> and continue the conversation.
+                    </p>
+                </div>
+            `;
+            
+            // Set up form interactions after content is loaded
+            setupFormInteractions();
+            
+            // Render markdown content
+            renderMarkdown();
+        }
+        
+        function renderMarkdown() {
+            const summaryContent = document.getElementById('summary-content');
+            if (summaryContent && summaryData && summaryData.summary && summaryData.summary.raw_text) {
+                // Use our direct markdown rendering (same as debug interface)
+                // Preprocess markdown to convert custom bullets to standard markdown
+                let processedMarkdown = summaryData.summary.raw_text
+                    .replace(/^(\s*)• /gm, '$1- ')  // Convert • to -
+                    .replace(/^(\s*)○ /gm, '$1  - '); // Convert ○ to indented -
+                
+                // Use marked.js for natural markdown rendering
+                summaryContent.innerHTML = marked.parse(processedMarkdown);
+            }
+        }
+        
+        function renderMarkdownDirectly(container, markdownText) {
+            console.log('🔧 Rendering markdown directly...');
+            
+            // Split markdown into lines and process each line
+            const lines = markdownText.split('\n');
+            let html = '';
+            
+            lines.forEach(line => {
+                const trimmedLine = line.trim();
+                const leadingSpaces = line.length - line.trimStart().length;
+                
+                if (trimmedLine.startsWith('## ')) {
+                    // Job headings (## Stonemason)
+                    html += `<h2 style="font-size: 18px; font-weight: 600; color: #0f172a; margin: 16px 0 8px 0;">${trimmedLine.substring(3)}</h2>\n`;
+                }
+                else if (trimmedLine.startsWith('• **') && trimmedLine.includes('**')) {
+                    // Main bullet points (• **Company & Industry:**)
+                    let text = trimmedLine.substring(2); // Remove "• "
+                    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Convert **text** to <strong>text</strong>
+                    html += `<div style="margin: 6px 0 2px 0; font-size: 14px; font-weight: 600; color: #0f172a; position: relative; padding-left: 16px;">
+                        <span style="position: absolute; left: 0; color: #64748b; font-size: 10px; top: 2px;">•</span><span style="margin-left: 10px;">${text}</span>
+                    </div>\n`;
+                }
+                else if (trimmedLine.startsWith('○ ')) {
+                    // Sub bullet points with proper indentation
+                    let text = trimmedLine.substring(2); // Remove "○ "
+                    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Convert **text** to <strong>text</strong>
+                    const indentLevel = Math.max(0, leadingSpaces - 2); // Base indent
+                    html += `<div style="margin: 2px 0; margin-left: ${16 + indentLevel}px; font-size: 14px; color: #374151; position: relative; padding-left: 16px;">
+                        <span style="position: absolute; left: 0; color: #94a3b8; font-size: 9px; top: 3px;">○</span><span style="margin-left: 10px;">${text}</span>
+                    </div>\n`;
+                }
+                else if (trimmedLine.startsWith('• ')) {
+                    // Regular bullet points (without **)
+                    let text = trimmedLine.substring(2); // Remove "• "
+                    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Convert **text** to <strong>text</strong>
+                    html += `<div style="margin: 4px 0; font-size: 14px; color: #374151; position: relative; padding-left: 16px;">
+                        <span style="position: absolute; left: 0; color: #64748b; font-size: 10px; top: 2px;">•</span><span style="margin-left: 10px;">${text}</span>
+                    </div>\n`;
+                }
+                else if (trimmedLine) {
+                    // Regular text lines
+                    let text = trimmedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Convert **text** to <strong>text</strong>
+                    html += `<p style="margin: 4px 0; font-size: 14px; color: #374151; line-height: 1.4;">${text}</p>\n`;
+                }
+                else {
+                    // Empty lines
+                    html += '<br/>\n';
+                }
+            });
+            
+            container.innerHTML = html;
+            console.log('✅ Direct markdown rendering complete!');
+        }
+        
+        function setupFormInteractions() {
+            const agreeCheckbox = document.getElementById('agree-checkbox');
+            const doctorSelect = document.getElementById('doctor-select');
+            const sendBtn = document.getElementById('send-btn');
+            const additionalNotes = document.getElementById('additional-notes');
+            const charCount = document.getElementById('char-count');
+            
+            if (!agreeCheckbox || !doctorSelect || !sendBtn) {
+                return; // Elements not ready yet
+            }
+
+            // Set up character counting for additional notes
+            if (additionalNotes && charCount) {
+                additionalNotes.addEventListener('input', function() {
+                    const currentLength = this.value.length;
+                    charCount.textContent = currentLength;
+                    
+                    // Add warning class if near limit
+                    const parentDiv = charCount.parentElement;
+                    if (currentLength > 1800) {
+                        parentDiv.classList.add('warning');
+                    } else {
+                        parentDiv.classList.remove('warning');
+                    }
+                });
+            }
+
+            agreeCheckbox.addEventListener('change', function() {
+                doctorSelect.disabled = !this.checked;
+                updateSendButton();
+            });
+
+            doctorSelect.addEventListener('change', function() {
+                updateSendButton();
+            });
+            
+            sendBtn.addEventListener('click', sendSummary);
+
+            function updateSendButton() {
+                const canSend = agreeCheckbox.checked && doctorSelect.value;
+                if (canSend) {
+                    sendBtn.style.pointerEvents = 'auto';
+                    sendBtn.style.opacity = '1';
+                    sendBtn.disabled = false;
+                } else {
+                    sendBtn.style.pointerEvents = 'none';
+                    sendBtn.style.opacity = '0.5';
+                    sendBtn.disabled = true;
+                }
+            }
+        }
+        
+        async function sendSummary() {
+            const doctorSelect = document.getElementById('doctor-select');
+            const sendBtn = document.getElementById('send-btn');
+            const additionalNotes = document.getElementById('additional-notes');
+            
+            if (!doctorSelect.value) return;
+            
+            // Parse doctor info
+            const [doctorName, doctorClinic, doctorEmail] = doctorSelect.value.split('|');
+            
+            // Get additional notes (if any)
+            const notes = additionalNotes ? additionalNotes.value.trim() : '';
+            
+            // Disable button and show loading
+            sendBtn.disabled = true;
+            sendBtn.textContent = '📤 Sending...';
+            
+            try {
+                const response = await fetch('/api/send-summary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        doctor_name: doctorName,
+                        doctor_clinic: doctorClinic,
+                        doctor_email: doctorEmail,
+                        additional_notes: notes
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to send summary');
+                }
+                
+                const result = await response.json();
+                
+                // Redirect to success page with doctor info
+                window.location.href = `./success.html?doctor=${encodeURIComponent(doctorName)}&clinic=${encodeURIComponent(doctorClinic)}`;
+                
+            } catch (error) {
+                console.error('Error sending summary:', error);
+                alert('Failed to send summary. Please try again.');
+                
+                // Re-enable button
+                sendBtn.disabled = false;
+                sendBtn.textContent = '📤 Send Summary';
+            }
+        }
+    </script>
+</body>
+</html>

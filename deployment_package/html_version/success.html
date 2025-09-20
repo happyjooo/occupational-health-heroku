@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summary Sent - Occupational Health Screen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background-color: #ffffff;
+            color: #0f172a;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .success-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 48px 32px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #16a34a, #22c55e);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            color: white;
+            font-size: 36px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+        }
+
+        .success-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 12px;
+        }
+
+        .success-text {
+            color: #64748b;
+            margin-bottom: 32px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .doctor-info {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 32px;
+        }
+
+        .doctor-name {
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .doctor-clinic {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .success-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            text-decoration: none;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #f8fafc;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #f1f5f9;
+        }
+
+        .additional-info {
+            margin-top: 24px;
+            padding: 16px;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            font-size: 14px;
+            color: #1e40af;
+        }
+
+        .info-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .timestamp {
+            margin-top: 24px;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                max-width: 600px;
+            }
+            
+            .success-actions {
+                flex-direction: row;
+                justify-content: center;
+            }
+            
+            .btn {
+                width: auto;
+                min-width: 140px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-card">
+            <div class="success-icon">✓</div>
+            
+            <h1 class="success-title">Summary Sent Successfully!</h1>
+            
+            <p class="success-text">
+                Your occupational history summary has been securely transmitted to your healthcare provider.
+            </p>
+            
+            <div class="doctor-info" id="doctor-info">
+                <div class="doctor-name" id="doctor-name">Dr. Alice Smith</div>
+                <div class="doctor-clinic" id="doctor-clinic">City Health Clinic</div>
+            </div>
+            
+            <div class="additional-info">
+                <div class="info-title">📋 What happens next?</div>
+                <p>Your doctor will review your occupational history before your appointment. This will help them provide better care tailored to your work-related health concerns.</p>
+            </div>
+            
+            <div class="success-actions">
+                <a href="./index.html" class="btn btn-primary">
+                    🏠 Start New Screen
+                </a>
+                <button onclick="window.close()" class="btn btn-secondary">
+                    ✕ Close Window
+                </button>
+            </div>
+            
+            <div class="timestamp" id="timestamp">
+                Session completed: August 13, 2025 at 2:45 PM
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get doctor info from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const doctorName = urlParams.get('doctor');
+            const doctorClinic = urlParams.get('clinic');
+            
+            // Update doctor information if provided
+            if (doctorName && doctorClinic) {
+                document.getElementById('doctor-name').textContent = doctorName;
+                document.getElementById('doctor-clinic').textContent = doctorClinic;
+            }
+            
+            // Update timestamp with current date and time
+            const now = new Date();
+            const formattedDate = now.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            const formattedTime = now.toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true 
+            });
+            
+            document.getElementById('timestamp').textContent = `Session completed: ${formattedDate} at ${formattedTime}`;
+            
+            // Add a subtle animation to the success icon
+            const icon = document.querySelector('.success-icon');
+            setTimeout(() => {
+                icon.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    icon.style.transform = 'scale(1)';
+                }, 200);
+            }, 300);
+            
+            console.log('Summary successfully sent to healthcare provider');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug & Testing Interface</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #1e293b;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+        }
+
+        /* Natural markdown styling for bullet points */
+        .summary-display ul {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .summary-display ul li {
+            margin: 4px 0;
+            line-height: 1.5;
+            display: list-item;
+            list-style-position: outside;
+        }
+
+        .summary-display ul li::marker {
+            font-size: 10px;
+            color: #64748b;
+        }
+
+        /* Fix sub-bullet alignment - target nested lists */
+        .summary-display ul ul li {
+            position: relative;
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        .summary-display ul ul li::before {
+            content: "○";
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 9px;
+            color: #94a3b8;
+            line-height: 1;
+        }
+
+        .summary-display h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0f172a;
+            margin: 16px 0 8px 0;
+        }
+
+        .summary-display h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+            margin: 12px 0 6px 0;
+        }
+
+        .summary-display p {
+            margin: 4px 0;
+            line-height: 1.4;
+        }
+
+        .checkpoint {
+            border-left: 4px solid #3b82f6;
+            padding-left: 16px;
+            margin-bottom: 20px;
+        }
+
+        .checkpoint h3 {
+            color: #3b82f6;
+            margin-bottom: 8px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 20px;
+            background: #3b82f6;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            margin: 4px 8px 4px 0;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #64748b;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        .btn-success {
+            background: #059669;
+        }
+
+        .btn-success:hover {
+            background: #047857;
+        }
+
+        .result {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+            font-family: monospace;
+            font-size: 12px;
+            display: none;
+        }
+
+        .result.success {
+            background: #ecfdf5;
+            border-color: #a7f3d0;
+            color: #065f46;
+        }
+
+        .result.error {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+
+        .workflow {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .step.active {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .step-number {
+            width: 30px;
+            height: 30px;
+            background: #e2e8f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            font-weight: 600;
+        }
+
+        .step.active .step-number {
+            background: #3b82f6;
+            color: white;
+        }
+
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 12px 0;
+            font-size: 14px;
+        }
+
+        /* Markdown content styling to match frontend */
+        .summary-display {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .summary-display h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 16px 0;
+            line-height: 1.2;
+        }
+
+        .summary-display h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0f172a;
+            margin: 24px 0 12px 0;
+            line-height: 1.3;
+        }
+
+        .summary-display h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 20px 0 8px 0;
+            line-height: 1.3;
+        }
+
+        /* Simple summary styling */
+        .summary-display {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+        }
+
+        .summary-display p, .summary-display li {
+            margin: 8px 0;
+            color: #374151;
+            line-height: 1.6;
+        }
+
+
+        .summary-display strong {
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .summary-display em {
+            font-style: italic;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Debug & Testing Interface</h1>
+            <p>Test different parts of the occupational health system without running full conversations</p>
+        </div>
+
+        <div class="section">
+            <h2>System Workflow</h2>
+            <div class="workflow">
+                <div class="step" id="step1">
+                    <div class="step-number">1</div>
+                    <strong>Conversation</strong>
+                    <div>Dr. O interviews patient</div>
+                </div>
+                <div class="step" id="step2">
+                    <div class="step-number">2</div>
+                    <strong>Summary Generation</strong>
+                    <div>AI creates patient summary</div>
+                </div>
+                <div class="step" id="step3">
+                    <div class="step-number">3</div>
+                    <strong>PDF & Email</strong>
+                    <div>Generate PDF and send to doctor</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Quick Test Checkpoints</h2>
+            
+            <div class="checkpoint">
+                <h3>Checkpoint 1: Create Test Session</h3>
+                <p>Create a pre-filled conversation session to test summary generation and PDF creation</p>
+                <button class="btn" onclick="createTestSession()">Create Test Session</button>
+                <div class="result" id="result1"></div>
+            </div>
+
+            <div class="checkpoint">
+                <h3>Checkpoint 2: Test Summary Generation</h3>
+                <p>Generate summary from the test session (requires session ID from Checkpoint 1)</p>
+                <input type="text" id="sessionId" placeholder="Session ID from checkpoint 1" style="padding: 8px; margin-right: 8px; border: 1px solid #cbd5e1; border-radius: 4px; width: 300px;">
+                <button class="btn btn-secondary" onclick="testSummary()">Test Summary</button>
+                <button class="btn btn-success" onclick="openReviewPage()">Open Review Page</button>
+                <div class="result" id="result2"></div>
+            </div>
+
+            <div class="checkpoint">
+                <h3>Checkpoint 3: Test PDF Generation</h3>
+                <p>Test PDF generation and email sending (requires session with summary)</p>
+                <button class="btn btn-secondary" onclick="testPdfGeneration()">Test PDF Only</button>
+                <div class="result" id="result3"></div>
+            </div>
+
+            <div class="checkpoint">
+                <h3>🐛 Debug Tools</h3>
+                <p>Diagnostic tools to debug the pipeline</p>
+                <button class="btn btn-warning" onclick="debugSession()">Debug Session Data</button>
+                <button class="btn btn-warning" onclick="debugDoctorSummary()">Debug Doctor Summary Preview</button>
+                <div class="result" id="debugResult"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Quick Links</h2>
+            <a href="/chat.html" class="btn">Start New Chat</a>
+            <a href="/docs" class="btn btn-secondary">API Documentation</a>
+            <a href="/" class="btn btn-secondary">Main App</a>
+        </div>
+
+        <div class="info-box">
+            <strong>💡 How to use:</strong> 
+            <ol style="margin: 8px 0 0 20px;">
+                <li>Click "Create Test Session" to generate a sample conversation</li>
+                <li>Copy the session ID and test summary generation</li>
+                <li>Use "Open Review Page" to see the full review interface</li>
+                <li>Test PDF generation and email sending from the review page</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let currentSessionId = '';
+
+        function renderMarkdownDirectly(container, markdownText) {
+            console.log('🔧 Rendering markdown directly...');
+            
+            // Split markdown into lines and process each line
+            const lines = markdownText.split('\n');
+            let html = '';
+            
+            lines.forEach(line => {
+                const trimmedLine = line.trim();
+                const leadingSpaces = line.length - line.trimStart().length;
+                
+                if (trimmedLine.startsWith('## ')) {
+                    // Job headings (## Stonemason)
+                    html += `<h2 style="font-size: 18px; font-weight: 600; color: #0f172a; margin: 16px 0 8px 0;">${trimmedLine.substring(3)}</h2>\n`;
+                }
+                else if (trimmedLine.startsWith('• **') && trimmedLine.includes('**')) {
+                    // Main bullet points (• **Company & Industry:**)
+                    let text = trimmedLine.substring(2); // Remove "• "
+                    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Convert **text** to <strong>text</strong>
+                    html += `<div style="margin: 6px 0 2px 0; font-size: 14px; font-weight: 600; color: #0f172a; display: flex; align-items: flex-start;">
+                        <span style="color: #64748b; font-size: 10px; margin-right: 8px; margin-top: 2px; flex-shrink: 0;">•</span><span>${text}</span>
+                    </div>\n`;
+                }
+                else if (trimmedLine.startsWith('○ ')) {
+                    // Sub bullet points with proper indentation
+                    let text = trimmedLine.substring(2); // Remove "○ "
+                    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Convert **text** to <strong>text</strong>
+                    const indentLevel = Math.max(0, leadingSpaces - 2); // Base indent
+                    html += `<div style="margin: 2px 0; margin-left: ${20 + indentLevel}px; font-size: 14px; color: #374151; display: flex; align-items: flex-start;">
+                        <span style="color: #94a3b8; font-size: 9px; margin-right: 8px; margin-top: 3px; flex-shrink: 0;">○</span><span>${text}</span>
+                    </div>\n`;
+                }
+                else if (trimmedLine.startsWith('• ')) {
+                    // Regular bullet points (without **)
+                    let text = trimmedLine.substring(2); // Remove "• "
+                    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Convert **text** to <strong>text</strong>
+                    html += `<div style="margin: 4px 0; font-size: 14px; color: #374151; display: flex; align-items: flex-start;">
+                        <span style="color: #64748b; font-size: 10px; margin-right: 8px; margin-top: 2px; flex-shrink: 0;">•</span><span>${text}</span>
+                    </div>\n`;
+                }
+                else if (trimmedLine) {
+                    // Regular text lines
+                    let text = trimmedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Convert **text** to <strong>text</strong>
+                    html += `<p style="margin: 4px 0; font-size: 14px; color: #374151; line-height: 1.4;">${text}</p>\n`;
+                }
+                else {
+                    // Empty lines
+                    html += '<br/>\n';
+                }
+            });
+            
+            container.innerHTML = html;
+            console.log('✅ Direct markdown rendering complete!');
+        }
+
+        async function createTestSession() {
+            const resultDiv = document.getElementById('result1');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.textContent = 'Creating test session...';
+
+            try {
+                const response = await fetch('/api/debug/create-test-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentSessionId = data.session_id;
+                    document.getElementById('sessionId').value = currentSessionId;
+                    
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <strong>✅ Test session created successfully!</strong><br>
+                        Session ID: <code>${data.session_id}</code><br>
+                        Conversation length: ${data.conversation_length} messages<br>
+                        Next: Use the session ID above to test summary generation
+                    `;
+                    
+                    // Activate step 2
+                    document.getElementById('step1').classList.remove('active');
+                    document.getElementById('step2').classList.add('active');
+                } else {
+                    throw new Error(data.detail || 'Failed to create test session');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function testSummary() {
+            const sessionId = document.getElementById('sessionId').value;
+            if (!sessionId) {
+                alert('Please enter a session ID from checkpoint 1');
+                return;
+            }
+
+            const resultDiv = document.getElementById('result2');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.textContent = 'Generating summary...';
+
+            try {
+                const response = await fetch(`/api/summary/${sessionId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    const sessionIdForDiv = data.session_id;
+                    resultDiv.innerHTML = `
+                        <strong>✅ Summary generated successfully!</strong><br>
+                        Session ID: <code>${sessionIdForDiv}</code><br>
+                        Summary length: ${data.summary.raw_text.length} characters<br>
+                        Jobs found: ${data.summary.jobs.length}<br>
+                        <details style="margin-top: 8px;">
+                            <summary>View Raw Markdown (LLM Output)</summary>
+                            <pre style="margin-top: 8px; max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; background: #f8fafc; font-family: monospace; font-size: 12px; white-space: pre-wrap;">${data.summary.raw_text}</pre>
+                        </details>
+                        <details style="margin-top: 8px;">
+                            <summary>View Formatted Summary (as users see it)</summary>
+                            <div style="margin-top: 8px; max-height: 500px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+                                <div id="summary-content-${sessionIdForDiv}" class="summary-display"></div>
+                            </div>
+                        </details>
+                    `;
+                    
+                    // Render the full summary with markdown formatting (same as users see)
+                    setTimeout(() => {
+                        const summaryDiv = document.getElementById(`summary-content-${sessionIdForDiv}`);
+                        if (summaryDiv && typeof marked !== 'undefined') {
+                            try {
+                                // Configure marked options for safe rendering (same as frontend)
+                                marked.setOptions({
+                                    breaks: true,
+                                    gfm: true
+                                });
+                                
+                                // Preprocess markdown to convert custom bullets to standard markdown
+                                let processedMarkdown = data.summary.raw_text
+                                    .replace(/^(\s*)• /gm, '$1- ')  // Convert • to -
+                                    .replace(/^(\s*)○ /gm, '$1  - '); // Convert ○ to indented -
+                                
+                                // Render markdown using marked.js library for natural formatting
+                                summaryDiv.innerHTML = marked.parse(processedMarkdown);
+                                
+                                console.log('✅ Summary rendered directly from markdown');
+                                console.log('🔍 Raw markdown first 500 chars:', data.summary.raw_text.substring(0, 500));
+                                
+                                // Add visual HTML structure display
+                                const htmlPreview = document.createElement('details');
+                                htmlPreview.style.marginTop = '8px';
+                                htmlPreview.innerHTML = `
+                                    <summary>View Generated HTML Structure</summary>
+                                    <pre style="margin-top: 8px; max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; background: #fff3cd; font-family: monospace; font-size: 11px; white-space: pre-wrap;">${summaryDiv.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                                `;
+                                summaryDiv.parentNode.appendChild(htmlPreview);
+                            } catch (error) {
+                                console.error('❌ Error rendering markdown:', error);
+                                summaryDiv.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${data.summary.raw_text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
+                            }
+                        } else {
+                            // Fallback if marked.js not available
+                            console.warn('⚠️ marked.js not available, using fallback');
+                            if (summaryDiv) {
+                                summaryDiv.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${data.summary.raw_text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
+                            }
+                        }
+                    }, 100); // Small delay to ensure DOM is ready
+                    
+                    // Activate step 3
+                    document.getElementById('step2').classList.remove('active');
+                    document.getElementById('step3').classList.add('active');
+                } else {
+                    throw new Error(data.detail || 'Failed to generate summary');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        function openReviewPage() {
+            const sessionId = document.getElementById('sessionId').value;
+            if (!sessionId) {
+                alert('Please enter a session ID from checkpoint 1');
+                return;
+            }
+            
+            window.open(`/review.html?session=${sessionId}`, '_blank');
+        }
+
+        async function testPdfGeneration() {
+            const sessionId = document.getElementById('sessionId').value;
+            if (!sessionId) {
+                alert('Please enter a session ID');
+                return;
+            }
+
+            const resultDiv = document.getElementById('result3');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.textContent = 'Testing PDF generation...';
+
+            // This would require implementing a test PDF endpoint
+            resultDiv.className = 'result';
+            resultDiv.textContent = 'Use the Review Page to test PDF generation - click "Open Review Page" above';
+        }
+
+        // Auto-highlight step 1 on page load
+        document.getElementById('step1').classList.add('active');
+    </script>
+</body>
+</html>
