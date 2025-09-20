@@ -192,14 +192,36 @@ async def chat_endpoint(request: ChatRequest):
                 }
                 save_session(session_id, sessions[session_id])
             else:
-                # This should only happen for genuinely new sessions
-                print(f"⚠️ WARNING: Session {session_id} not found and no browser history provided")
-                
-                # Return an error instead of silently creating new session
-                raise HTTPException(
-                    status_code=410, 
-                    detail="Session expired or lost. Please refresh the page to start a new conversation."
-                )
+                # Handle new session creation (when no session exists and no history provided)
+                if not request.session_id or request.message == '':
+                    # This is a genuine new session - create it
+                    print(f"🆕 Creating new session {session_id}")
+                    sessions[session_id] = {
+                        'conversation_history': [],
+                        'created_at': datetime.now(),
+                        'summary': None
+                    }
+                    
+                    # Get opening message from Dr. O
+                    opening_response = conversation_manager.start_interview()
+                    sessions[session_id]['conversation_history'].append(opening_response)
+                    
+                    # Save new session immediately
+                    save_session(session_id, sessions[session_id])
+                    print(f"💾 Created and saved new session {session_id}")
+                    
+                    return ChatResponse(
+                        response=opening_response['content'],
+                        session_id=session_id,
+                        is_complete=False
+                    )
+                else:
+                    # This is a lost session with a real message
+                    print(f"⚠️ WARNING: Session {session_id} lost and no browser history provided")
+                    raise HTTPException(
+                        status_code=410, 
+                        detail="Session expired or lost. Please refresh the page to start a new conversation."
+                    )
         
         # Add user message to conversation
         user_message = {"role": "user", "content": request.message}
@@ -624,4 +646,5 @@ if __name__ == "__main__":
         reload=True,
         reload_dirs=["./src", "./html_version"]
     )
+
 
