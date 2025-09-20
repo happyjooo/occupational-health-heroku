@@ -7,8 +7,11 @@ from google import genai
 import vertexai
 from vertexai.generative_models import GenerativeModel
 import os
+import json
+import tempfile
 from typing import List, Dict, Optional, Literal
 from dotenv import load_dotenv
+from google.oauth2 import service_account
 
 # Load environment variables
 load_dotenv()
@@ -81,10 +84,16 @@ class GeminiClient:
                     conversation_text += "🎯 RESPONSE LENGTH: Default to under 40 words. Use longer responses ONLY for high-risk exposures (asbestos, silica) or critical medical clarifications.\n"
                     conversation_text += "🔄 CRITICAL: ONE JOB AT A TIME - Complete the current job 100% before moving to the next. NEVER ask about current job AND next job in same response.\n"
                     conversation_text += "❌ NO AUTOMATIC 'THANK YOU': Avoid starting responses with 'Thank you for that information' - be direct and natural.\n"
-                    conversation_text += "🚨 STAY ON SCOPE: If patient asks about non-work topics, gently redirect: 'I understand you have other concerns, but let's focus on your work history for your doctor. Now, let's continue with [work topic]...'\n"
                     conversation_text += "- Apply principles and JEM logic dynamically to what they just said\n"
                     conversation_text += "- Ask expert-driven questions, not generic 'tell me about your tasks'\n\n"
                     conversation_text += "Dr. O:"
+                    
+                    # Debug: Log conversation context before sending to LLM
+                    print("="*50)
+                    print("🔍 DEBUG: CONVERSATION SENT TO LLM")
+                    print(f"📏 Length: {len(conversation_text)} characters")
+                    print(f"📝 Last 500 chars: ...{conversation_text[-500:]}")
+                    print("="*50)
                 else:  # patient role
                     conversation_text += "\nBased on the conversation history above, provide the patient's response to Dr. O's question. Respond naturally as the patient character:\n\n"
                     conversation_text += "Patient:"
@@ -95,17 +104,29 @@ class GeminiClient:
                 else:  # patient role
                     conversation_text += "\nProvide the patient's initial response to Dr. O's greeting. Respond naturally as the patient character:\n\nPatient:"
             
-            # Generate response with concise, structured output
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=conversation_text,
-                config=genai.types.GenerateContentConfig(
-                    temperature=0.6,  # Balanced for focused but flexible responses
-                    max_output_tokens=800,  # Reasonable limit that allows flexibility when needed
-                    top_p=0.8,  # Allow some creativity for medical contexts
-                    thinking_config=genai.types.ThinkingConfig(thinking_budget=0)  # Disable thinking for speed
-                )
+            # Debug: Log conversation context before sending to LLM
+            print("="*50)
+            print("🔍 DEBUG: CONVERSATION SENT TO LLM")
+            print(f"📏 Length: {len(conversation_text)} characters")
+            print(f"📝 Last 500 chars: ...{conversation_text[-500:]}")
+            print("="*50)
+            
+        # Generate response with concise, structured output
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=conversation_text,
+            config=genai.types.GenerateContentConfig(
+                temperature=0.6,  # Balanced for focused but flexible responses
+                max_output_tokens=800,  # Reasonable limit that allows flexibility when needed
+                top_p=0.8,  # Allow some creativity for medical contexts
+                thinking_config=genai.types.ThinkingConfig(thinking_budget=0)  # Disable thinking for speed
             )
+        )
+        
+        # Debug: Log LLM response
+        print("🤖 DEBUG: LLM RESPONSE")
+        print(f"📤 Response: {response.text[:200]}...")
+        print("="*50)
             
             # Post-processing: monitor response length but don't truncate
             response_text = response.text.strip()
@@ -143,11 +164,35 @@ class VertexAIClient:
         self.location = location
         self.model_name = "gemini-2.5-pro"
         
-        # Initialize Vertex AI
-        vertexai.init(project=self.project_id, location=self.location)
+        # Set up credentials from environment variable
+        credentials = self._setup_credentials()
+        
+        # Initialize Vertex AI with credentials
+        vertexai.init(project=self.project_id, location=self.location, credentials=credentials)
         self._model = None
         
         print(f"🤖 Vertex AI client initialized with project: {self.project_id}, model: {self.model_name}")
+    
+    def _setup_credentials(self):
+        """Set up Google Cloud credentials from environment variable"""
+        credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        
+        if credentials_json:
+            print("🔑 Using service account credentials from environment variable")
+            try:
+                # Parse JSON credentials
+                credentials_dict = json.loads(credentials_json)
+                
+                # Create credentials object
+                credentials = service_account.Credentials.from_service_account_info(credentials_dict)
+                return credentials
+                
+            except Exception as e:
+                print(f"⚠️ Error parsing service account JSON: {e}")
+                return None
+        else:
+            print("🔑 Using default application credentials")
+            return None
     
     @property
     def model(self):
