@@ -42,8 +42,8 @@ app.add_middleware(
 conversation_manager = ConversationManager()
 pdf_generator = PDFGenerator()
 
-# Store active sessions (in production, use Redis or database)
-sessions = {}
+# Simplified: Browser storage handles persistence, backend is stateless
+# No server-side session storage needed
 
 # Email configuration
 SMTP_SERVER = "smtp.gmail.com"  # Gmail SMTP server
@@ -58,6 +58,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+    conversation_history: List[Dict[str, str]] = []  # Always required now
 
 class ChatResponse(BaseModel):
     response: str
@@ -128,23 +129,16 @@ async def debug_html():
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     """
-    Handle chat messages and return AI responses
+    Stateless chat endpoint - conversation history comes from browser
     """
     try:
-        # Get or create session
+        # Generate session ID if needed
         session_id = request.session_id or str(uuid.uuid4())
         
-        if session_id not in sessions:
-            # Start new session
-            sessions[session_id] = {
-                'conversation_history': [],
-                'created_at': datetime.now(),
-                'summary': None
-            }
-            
-            # Get opening message from Dr. O
+        # For new conversations (empty message or no history)
+        if request.message == '' or len(request.conversation_history) == 0:
+            print(f"🆕 Starting new conversation with session {session_id}")
             opening_response = conversation_manager.start_interview()
-            sessions[session_id]['conversation_history'].append(opening_response)
             
             return ChatResponse(
                 response=opening_response['content'],
@@ -152,21 +146,19 @@ async def chat_endpoint(request: ChatRequest):
                 is_complete=False
             )
         
-        # Add user message to conversation
-        user_message = {"role": "user", "content": request.message}
-        sessions[session_id]['conversation_history'].append(user_message)
+        # For continuing conversations
+        print(f"💬 Continuing conversation {session_id} with {len(request.conversation_history)} messages")
         
-        # Get AI response
-        ai_response = conversation_manager.continue_interview(
-            sessions[session_id]['conversation_history']
-        )
+        # Add user message to conversation history
+        conversation_history = request.conversation_history.copy()
+        user_message = {"role": "user", "content": request.message}
+        conversation_history.append(user_message)
+        
+        # Get AI response using full conversation history
+        ai_response = conversation_manager.continue_interview(conversation_history)
         
         # Check if interview is complete
         is_complete = conversation_manager.is_interview_complete(ai_response['content'])
-        
-        if not is_complete:
-            # Add AI response to conversation if not complete
-            sessions[session_id]['conversation_history'].append(ai_response)
         
         return ChatResponse(
             response=ai_response['content'],
@@ -178,31 +170,33 @@ async def chat_endpoint(request: ChatRequest):
         print(f"Error in chat endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/summary/{session_id}")
-async def get_summary(session_id: str):
+class SummaryRequest(BaseModel):
+    session_id: str
+    conversation_history: List[Dict[str, str]]
+    additional_notes: str = ""
+
+@app.post("/api/summary")
+async def get_summary(request: SummaryRequest):
     """
     Generate and return summary for a session
     """
     try:
-        if session_id not in sessions:
-            raise HTTPException(status_code=404, detail="Session not found")
+        session_id = request.session_id
+        conversation_history = request.conversation_history
         
-        # Generate summary if not already done
-        if not sessions[session_id].get('summary'):
-            conversation_history = sessions[session_id]['conversation_history']
-            summary_text = conversation_manager.generate_summary(conversation_history)
-            
-            # Parse and structure the summary (simplified version)
-            sessions[session_id]['summary'] = {
-                'raw_text': summary_text,
-                'jobs': extract_jobs_from_summary(summary_text),
-                'generated_at': datetime.now().isoformat()
-            }
+        print(f"📋 Generating summary for session {session_id} with {len(conversation_history)} messages")
+        
+        # Generate summary using conversation history from browser
+        summary_text = conversation_manager.generate_summary(conversation_history)
         
         return {
             'session_id': session_id,
-            'summary': sessions[session_id]['summary'],
-            'conversation_length': len(sessions[session_id]['conversation_history'])
+            'summary': {
+                'raw_text': summary_text,
+                'jobs': extract_jobs_from_summary(summary_text),
+                'generated_at': datetime.now().isoformat()
+            },
+            'conversation_length': len(conversation_history)
         }
         
     except Exception as e:
@@ -255,7 +249,16 @@ async def send_summary(request: SummaryRequest):
         
         # Generate PDF with doctor summary (now includes appended notes if any)
         pdf_filename = f"occupational_health_analysis_{request.session_id}_{int(datetime.now().timestamp())}.pdf"
-        pdf_path = pdf_generator.save_pdf_to_file(doctor_summary_text, pdf_filename)
+        
+        # Create temp directory for PDFs if it doesn't exist
+        temp_dir = "temp_pdfs"
+        os.makedirs(temp_dir, exist_ok=True)
+        pdf_path = os.path.join(temp_dir, pdf_filename)
+        
+        # Generate PDF
+        pdf_bytes = pdf_generator.generate_pdf(doctor_summary_text)
+        with open(pdf_path, 'wb') as f:
+            f.write(pdf_bytes)
         
         # Send email with PDF attachment (if password is set)
         if SMTP_PASSWORD:
@@ -268,11 +271,19 @@ async def send_summary(request: SummaryRequest):
             
             if not email_sent:
                 print("⚠️ Email sending failed, but PDF was generated")
+            else:
+                # Clean up PDF file after successful email send
+                try:
+                    os.remove(pdf_path)
+                    print("🗑️ Temporary PDF file cleaned up")
+                except Exception as e:
+                    print(f"⚠️ Could not delete temp PDF: {e}")
         else:
             print("⚠️ No email password set - PDF generated but not sent")
             print(f"📄 PDF saved to: {pdf_path}")
             print(f"📧 To enable email: export EMAIL_PASSWORD='your_app_password'")
             print(f"📧 Then restart the server")
+            print("⚠️ PDF will remain in temp_pdfs/ until email is configured")
         
         # Store send information
         session_data['sent_to'] = {
@@ -283,13 +294,28 @@ async def send_summary(request: SummaryRequest):
             'sent_at': datetime.now().isoformat()
         }
         
+        # After successful email send, clean up session data for privacy
+        cleanup_success = False
+        try:
+            if session_id in sessions:
+                del sessions[session_id]
+            # Also remove session file
+            session_file = SESSIONS_DIR / f"session_{session_id}.json"
+            if session_file.exists():
+                session_file.unlink()
+            print(f"🗑️ Cleaned up session {session_id} after successful email send")
+            cleanup_success = True
+        except Exception as cleanup_error:
+            print(f"⚠️ Error cleaning up session: {cleanup_error}")
+        
         return {
             'success': True,
             'message': 'Detailed analysis sent successfully to doctor',
             'doctor_name': request.doctor_name,
             'doctor_clinic': request.doctor_clinic,
             'doctor_email': request.doctor_email,
-            'pdf_path': pdf_path
+            'pdf_path': pdf_path,
+            'cleanup_completed': cleanup_success
         }
         
     except Exception as e:
@@ -534,5 +560,4 @@ if __name__ == "__main__":
         reload=True,
         reload_dirs=["./src", "./html_version"]
     )
-
 
