@@ -42,7 +42,45 @@ app.add_middleware(
 conversation_manager = ConversationManager()
 pdf_generator = PDFGenerator()
 
-# Store active sessions (in production, use Redis or database)
+# Store active sessions with file persistence for Heroku
+import json
+import tempfile
+from pathlib import Path
+
+# Create sessions directory in temp
+SESSIONS_DIR = Path(tempfile.gettempdir()) / "heroku_sessions"
+SESSIONS_DIR.mkdir(exist_ok=True)
+
+def load_session(session_id: str) -> dict:
+    """Load session from file"""
+    session_file = SESSIONS_DIR / f"session_{session_id}.json"
+    if session_file.exists():
+        try:
+            with open(session_file, 'r') as f:
+                data = json.load(f)
+                # Convert created_at string back to datetime
+                if 'created_at' in data:
+                    data['created_at'] = datetime.fromisoformat(data['created_at'])
+                return data
+        except Exception as e:
+            print(f"⚠️ Error loading session {session_id}: {e}")
+    return None
+
+def save_session(session_id: str, session_data: dict):
+    """Save session to file"""
+    session_file = SESSIONS_DIR / f"session_{session_id}.json"
+    try:
+        # Convert datetime to string for JSON serialization
+        data_to_save = session_data.copy()
+        if 'created_at' in data_to_save:
+            data_to_save['created_at'] = data_to_save['created_at'].isoformat()
+        
+        with open(session_file, 'w') as f:
+            json.dump(data_to_save, f, indent=2)
+    except Exception as e:
+        print(f"⚠️ Error saving session {session_id}: {e}")
+
+# In-memory cache for faster access
 sessions = {}
 
 # Email configuration
@@ -134,6 +172,13 @@ async def chat_endpoint(request: ChatRequest):
         # Get or create session
         session_id = request.session_id or str(uuid.uuid4())
         
+        # Try to load session from memory first, then from file
+        if session_id not in sessions:
+            loaded_session = load_session(session_id)
+            if loaded_session:
+                sessions[session_id] = loaded_session
+                print(f"🔄 Restored session {session_id} from file")
+        
         if session_id not in sessions:
             # Start new session
             sessions[session_id] = {
@@ -145,6 +190,10 @@ async def chat_endpoint(request: ChatRequest):
             # Get opening message from Dr. O
             opening_response = conversation_manager.start_interview()
             sessions[session_id]['conversation_history'].append(opening_response)
+            
+            # Save new session immediately
+            save_session(session_id, sessions[session_id])
+            print(f"💾 Created and saved new session {session_id}")
             
             return ChatResponse(
                 response=opening_response['content'],
@@ -168,6 +217,9 @@ async def chat_endpoint(request: ChatRequest):
             # Add AI response to conversation if not complete
             sessions[session_id]['conversation_history'].append(ai_response)
         
+        # Save session after each interaction
+        save_session(session_id, sessions[session_id])
+        
         return ChatResponse(
             response=ai_response['content'],
             session_id=session_id,
@@ -184,8 +236,14 @@ async def get_summary(session_id: str):
     Generate and return summary for a session
     """
     try:
+        # Try to load session from memory first, then from file
         if session_id not in sessions:
-            raise HTTPException(status_code=404, detail="Session not found")
+            loaded_session = load_session(session_id)
+            if loaded_session:
+                sessions[session_id] = loaded_session
+                print(f"🔄 Restored session {session_id} from file for summary")
+            else:
+                raise HTTPException(status_code=404, detail="Session not found")
         
         # Generate summary if not already done
         if not sessions[session_id].get('summary'):
@@ -551,3 +609,4 @@ if __name__ == "__main__":
         reload=True,
         reload_dirs=["./src", "./html_version"]
     )
+
