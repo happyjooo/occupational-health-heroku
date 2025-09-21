@@ -65,8 +65,9 @@ class ChatResponse(BaseModel):
     session_id: str
     is_complete: bool = False
 
-class SummaryRequest(BaseModel):
+class SendSummaryRequest(BaseModel):
     session_id: str
+    conversation_history: List[Dict[str, str]]
     doctor_name: str
     doctor_clinic: str
     doctor_email: str
@@ -204,21 +205,17 @@ async def get_summary(request: SummaryRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/send-summary")
-async def send_summary(request: SummaryRequest):
+async def send_summary(request: SendSummaryRequest):
     """
     Send detailed doctor summary to doctor (generate PDF and email)
     """
     try:
-        if request.session_id not in sessions:
-            raise HTTPException(status_code=404, detail="Session not found")
+        session_id = request.session_id
+        conversation_history = request.conversation_history
         
-        session_data = sessions[request.session_id]
-        
-        if not session_data.get('summary'):
-            raise HTTPException(status_code=400, detail="Summary not generated yet")
+        print(f"📧 Generating doctor summary for session {session_id} with {len(conversation_history)} messages")
         
         # Generate doctor-specific summary using the advanced prompt (ALWAYS the same regardless of notes)
-        conversation_history = session_data['conversation_history']
         doctor_summary_text = conversation_manager.generate_doctor_summary(conversation_history)
         
         print("🔍 DEBUG: Raw AI output before adding disclaimers:")
@@ -560,4 +557,3 @@ if __name__ == "__main__":
         reload=True,
         reload_dirs=["./src", "./html_version"]
     )
-
