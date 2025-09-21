@@ -598,7 +598,7 @@
                         <select id="doctor-select" class="form-select" disabled>
                             <option value="">Choose a doctor...</option>
                             <option value="Dr Ryan|Monash University|ryan.hoy@monash.edu">Dr Ryan • Monash University</option>
-                            <option value="Prof Khoa|Monash University|khoa.cao@monash.edu">Prof Khoa • Monash University</option>
+                            <option value="A/Prof. Khoa Cao|Monash University|khoa.cao@monash.edu">A/Prof. Khoa Cao • Monash University</option>
                             <option value="Chun Joo (CJ)|Research Team|gohchunjoo000@gmail.com">Chun Joo (CJ) • Research Team</option>
                         </select>
                     </div>
@@ -783,11 +783,17 @@
                     })
                 });
                 
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response ok:', response.ok);
+                
                 if (!response.ok) {
-                    throw new Error('Failed to send summary');
+                    const errorText = await response.text();
+                    console.error('❌ Response error:', errorText);
+                    throw new Error(`Failed to send summary: ${response.status} - ${errorText}`);
                 }
                 
                 const result = await response.json();
+                console.log('✅ Response result:', result);
                 
                 // Redirect to success page with doctor info
                 window.location.href = `./success.html?doctor=${encodeURIComponent(doctorName)}&clinic=${encodeURIComponent(doctorClinic)}`;
