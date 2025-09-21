@@ -282,28 +282,11 @@ async def send_summary(request: SendSummaryRequest):
             print(f"📧 Then restart the server")
             print("⚠️ PDF will remain in temp_pdfs/ until email is configured")
         
-        # Store send information
-        session_data['sent_to'] = {
-            'doctor_name': request.doctor_name,
-            'doctor_clinic': request.doctor_clinic,
-            'doctor_email': request.doctor_email,
-            'pdf_path': pdf_path,
-            'sent_at': datetime.now().isoformat()
-        }
+        # Note: In stateless mode, send information is not stored server-side
+        print(f"📧 Summary sent to {request.doctor_name} ({request.doctor_email}) at {datetime.now().isoformat()}")
         
-        # After successful email send, clean up session data for privacy
-        cleanup_success = False
-        try:
-            if session_id in sessions:
-                del sessions[session_id]
-            # Also remove session file
-            session_file = SESSIONS_DIR / f"session_{session_id}.json"
-            if session_file.exists():
-                session_file.unlink()
-            print(f"🗑️ Cleaned up session {session_id} after successful email send")
-            cleanup_success = True
-        except Exception as cleanup_error:
-            print(f"⚠️ Error cleaning up session: {cleanup_error}")
+        # Note: In stateless mode, no server-side cleanup needed
+        # Conversation data is stored in browser and cleaned by success.html
         
         return {
             'success': True,
@@ -311,8 +294,7 @@ async def send_summary(request: SendSummaryRequest):
             'doctor_name': request.doctor_name,
             'doctor_clinic': request.doctor_clinic,
             'doctor_email': request.doctor_email,
-            'pdf_path': pdf_path,
-            'cleanup_completed': cleanup_success
+            'pdf_path': pdf_path
         }
         
     except Exception as e:
