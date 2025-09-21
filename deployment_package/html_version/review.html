@@ -759,6 +759,15 @@
             sendBtn.textContent = '📤 Sending...';
             
             try {
+                // Get conversation history from browser storage
+                const conversationHistory = loadConversationFromStorage();
+                
+                if (!conversationHistory || conversationHistory.length === 0) {
+                    throw new Error('No conversation history found. Please return to chat.');
+                }
+                
+                console.log(`📧 Sending summary with ${conversationHistory.length} messages from browser storage`);
+                
                 const response = await fetch('/api/send-summary', {
                     method: 'POST',
                     headers: {
@@ -766,6 +775,7 @@
                     },
                     body: JSON.stringify({
                         session_id: sessionId,
+                        conversation_history: conversationHistory,
                         doctor_name: doctorName,
                         doctor_clinic: doctorClinic,
                         doctor_email: doctorEmail,
