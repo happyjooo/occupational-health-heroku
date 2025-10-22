@@ -36,6 +36,8 @@ class GeminiClient:
         """Lazy load the genai client only when needed"""
         if self._client is None:
             print("📡 Creating Gemini API connection...")
+            print(f"🔑 DEBUG: API key exists: {bool(self.api_key)}")
+            print(f"🔑 DEBUG: API key starts with: {self.api_key[:20] if self.api_key else 'NONE'}...")
             self._client = genai.Client(api_key=self.api_key)
         return self._client
     
@@ -151,11 +153,11 @@ class GeminiClient:
 class VertexAIClient:
     """Client wrapper for Vertex AI Gemini models"""
     
-    def __init__(self, project_id: str = None, location: str = "us-central1"):
+    def __init__(self, project_id: str = None, location: str = "us-central1", model_name: str = "gemini-2.5-pro"):
         """Initialize the Vertex AI client"""
         self.project_id = project_id or os.getenv("GOOGLE_CLOUD_PROJECT")
         self.location = location
-        self.model_name = "gemini-2.5-pro"
+        self.model_name = model_name
         
         # Set up credentials from environment variable
         credentials = self._setup_credentials()
@@ -198,7 +200,9 @@ class VertexAIClient:
     def generate_response(
         self, 
         messages: List[Dict[str, str]], 
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        role: str = "summary",
+        generation_config: Optional[Dict] = None
     ) -> str:
         """
         Generate a response using Vertex AI Gemini with conversation context
@@ -206,6 +210,8 @@ class VertexAIClient:
         Args:
             messages: List of conversation messages [{"role": "user|assistant", "content": "..."}]
             system_prompt: Optional system prompt to guide the conversation
+            role: Role type - "summary" for summaries, anything else for interviews
+            generation_config: Optional custom generation config (temperature, max_tokens, etc.)
             
         Returns:
             Generated response text
@@ -214,7 +220,7 @@ class VertexAIClient:
             # Build the full conversation context for Vertex AI
             conversation_text = ""
             
-            # Add system prompt if provided
+            # Add system prompt if provided (contains all interview instructions)
             if system_prompt:
                 conversation_text += f"SYSTEM INSTRUCTIONS:\n{system_prompt}\n\n"
             
@@ -222,28 +228,44 @@ class VertexAIClient:
             if messages:
                 conversation_text += "CONVERSATION HISTORY:\n"
                 for message in messages:
-                    role = message["role"]
+                    role_msg = message["role"]
                     content = message["content"]
                     
-                    if role == "user":
+                    if role_msg == "user":
                         conversation_text += f"Patient: {content}\n"
-                    elif role == "assistant":
+                    elif role_msg == "assistant":
                         conversation_text += f"Dr. O: {content}\n"
                 
-                # Add instruction for summary generation
-                conversation_text += "\nPlease generate a comprehensive markdown summary of this occupational history interview."
+                # Add instruction based on role
+                if role == "summary":
+                    conversation_text += "\nPlease generate a comprehensive markdown summary of this occupational history interview."
             else:
-                conversation_text += "\nPlease generate a comprehensive markdown summary."
+                if role == "summary":
+                    conversation_text += "\nPlease generate a comprehensive markdown summary."
             
-            # Generate response with highest consistency settings for summaries
+            # Use custom generation config or defaults based on role
+            if generation_config is None:
+                if role == "summary":
+                    # High consistency settings for summaries
+                    generation_config = {
+                        "temperature": 0.0,
+                        "max_output_tokens": 8192,
+                        "top_p": 1.0,
+                        "top_k": 1
+                    }
+                else:
+                    # Balanced settings for interviews
+                    generation_config = {
+                        "temperature": 0.6,
+                        "max_output_tokens": 800,
+                        "top_p": 0.8,
+                        "top_k": 40
+                    }
+            
+            # Generate response
             response = self.model.generate_content(
                 conversation_text,
-                generation_config={
-                    "temperature": 0.0,  # Lowest temperature for maximum consistency and determinism
-                    "max_output_tokens": 8192,  # Much higher token limit for detailed summaries
-                    "top_p": 1.0,  # Most deterministic sampling
-                    "top_k": 1  # Most deterministic token selection
-                }
+                generation_config=generation_config
             )
             
             return response.text.strip()
@@ -265,6 +287,7 @@ class VertexAIClient:
 # Create global client instances
 gemini_client = None
 vertex_ai_client = None
+vertex_ai_flash_client = None
 
 def get_gemini_client() -> GeminiClient:
     """Get or create the global Gemini client instance"""
@@ -273,10 +296,16 @@ def get_gemini_client() -> GeminiClient:
         gemini_client = GeminiClient()
     return gemini_client
 
-def get_vertex_ai_client() -> VertexAIClient:
+def get_vertex_ai_client(model_name: str = "gemini-2.5-pro") -> VertexAIClient:
     """Get or create the global Vertex AI client instance"""
-    global vertex_ai_client
-    if vertex_ai_client is None:
-        vertex_ai_client = VertexAIClient()
-    return vertex_ai_client
+    global vertex_ai_client, vertex_ai_flash_client
+    
+    if model_name == "gemini-2.5-flash":
+        if vertex_ai_flash_client is None:
+            vertex_ai_flash_client = VertexAIClient(model_name="gemini-2.5-flash")
+        return vertex_ai_flash_client
+    else:
+        if vertex_ai_client is None:
+            vertex_ai_client = VertexAIClient(model_name="gemini-2.5-pro")
+        return vertex_ai_client
 
