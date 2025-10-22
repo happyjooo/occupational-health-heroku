@@ -14,8 +14,8 @@ class ConversationManager:
     """Manages the occupational history interview conversation"""
     
     def __init__(self):
-        self.llm_client = get_gemini_client()  # For interviews (Gemini 2.5 Flash)
-        self.summary_client = get_vertex_ai_client()  # For summaries (Gemini 2.5 Pro)
+        self.llm_client = get_vertex_ai_client("gemini-2.5-flash")  # For interviews (Gemini 2.5 Flash via Vertex AI)
+        self.summary_client = get_vertex_ai_client("gemini-2.5-pro") # For summaries (Gemini 2.5 Pro)
         self.interview_prompt = self._load_interview_prompt()
         self.summary_prompt = self._load_summary_prompt()
         
@@ -260,7 +260,8 @@ class ConversationManager:
         try:
             summary = self.summary_client.generate_response(
                 messages=summary_messages,
-                system_prompt=self.summary_prompt
+                system_prompt=self.summary_prompt,
+                role="summary"
             )
             
             # Store the summary
@@ -327,7 +328,8 @@ class ConversationManager:
         
         summary = self.summary_client.generate_response(
             messages=summary_messages,
-            system_prompt=self.summary_prompt
+            system_prompt=self.summary_prompt,
+            role="summary"
         )
         
         return summary
@@ -363,7 +365,8 @@ class ConversationManager:
         
         summary = self.summary_client.generate_response(
             messages=summary_messages,
-            system_prompt=doctor_prompt
+            system_prompt=doctor_prompt,
+            role="summary"
         )
         
         # 🔍 DEBUG: Print raw LLM output before any processing
