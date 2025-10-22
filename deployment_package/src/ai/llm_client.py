@@ -36,7 +36,7 @@ class GeminiClient:
         """Lazy load the genai client only when needed"""
         if self._client is None:
             print("📡 Creating Gemini API connection...")
-            self._client = genai.Client()
+            self._client = genai.Client(api_key=self.api_key)
         return self._client
     
     def generate_response(
