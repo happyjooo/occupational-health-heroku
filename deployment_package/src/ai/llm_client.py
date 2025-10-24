@@ -36,8 +36,6 @@ class GeminiClient:
         """Lazy load the genai client only when needed"""
         if self._client is None:
             print("📡 Creating Gemini API connection...")
-            print(f"🔑 DEBUG: API key exists: {bool(self.api_key)}")
-            print(f"🔑 DEBUG: API key starts with: {self.api_key[:20] if self.api_key else 'NONE'}...")
             self._client = genai.Client(api_key=self.api_key)
         return self._client
     
@@ -78,26 +76,17 @@ class GeminiClient:
                     elif role_msg == "assistant":
                         conversation_text += f"Dr. O: {content}\n"
                 
-                # Add instruction for next response based on role
+                # Add simple role marker - let system_prompt handle all instructions
                 if role == "interviewer":
-                    conversation_text += "\nBased on the conversation history above, provide Dr. O's next response to continue the occupational history interview.\n\n"
-                    conversation_text += "🧠 USE YOUR EXPERT BRAIN: When patient mentions a job/task, immediately cross-reference with JEM - what specific exposures should you probe for? Ask targeted follow-ups based on their answers, not generic checklist questions.\n"
-                    conversation_text += "📋 FORMATTING: Use bullet points for multiple questions. Example: 'Two questions: • What type of dust? • Did you wear masks?'\n"
-                    conversation_text += "🎯 RESPONSE LENGTH: Default to under 40 words. Use longer responses ONLY for high-risk exposures (asbestos, silica) or critical medical clarifications.\n"
-                    conversation_text += "🔄 CRITICAL: ONE JOB AT A TIME - Complete the current job 100% before moving to the next. NEVER ask about current job AND next job in same response.\n"
-                    conversation_text += "❌ NO AUTOMATIC 'THANK YOU': Avoid starting responses with 'Thank you for that information' - be direct and natural.\n"
-                    conversation_text += "- Apply principles and JEM logic dynamically to what they just said\n"
-                    conversation_text += "- Ask expert-driven questions, not generic 'tell me about your tasks'\n\n"
-                    conversation_text += "Dr. O:"
+                    conversation_text += "\nDr. O:"
                 else:  # patient role
-                    conversation_text += "\nBased on the conversation history above, provide the patient's response to Dr. O's question. Respond naturally as the patient character:\n\n"
-                    conversation_text += "Patient:"
+                    conversation_text += "\nPatient:"
             else:
-                # This is the opening message
+                # Opening message - just add role marker
                 if role == "interviewer":
-                    conversation_text += "\nProvide Dr. O's opening message to start the occupational history interview. Keep it CONCISE and welcoming:\n\nDr. O:"
+                    conversation_text += "\nDr. O:"
                 else:  # patient role
-                    conversation_text += "\nProvide the patient's initial response to Dr. O's greeting. Respond naturally as the patient character:\n\nPatient:"
+                    conversation_text += "\nPatient:"
             
             # Debug: Log conversation context before sending to LLM
             print("="*50)
@@ -112,7 +101,7 @@ class GeminiClient:
                 contents=conversation_text,
                 config=genai.types.GenerateContentConfig(
                     temperature=0.6,  # Balanced for focused but flexible responses
-                    max_output_tokens=800,  # Reasonable limit that allows flexibility when needed
+                    max_output_tokens=4096,  # Generous limit for detailed responses
                     top_p=0.8,  # Allow some creativity for medical contexts
                     thinking_config=genai.types.ThinkingConfig(thinking_budget=0)  # Disable thinking for speed
                 )
@@ -153,11 +142,11 @@ class GeminiClient:
 class VertexAIClient:
     """Client wrapper for Vertex AI Gemini models"""
     
-    def __init__(self, project_id: str = None, location: str = "us-central1", model_name: str = "gemini-2.5-pro"):
+    def __init__(self, project_id: str = None, location: str = "us-central1"):
         """Initialize the Vertex AI client"""
         self.project_id = project_id or os.getenv("GOOGLE_CLOUD_PROJECT")
         self.location = location
-        self.model_name = model_name
+        self.model_name = "gemini-2.5-pro"
         
         # Set up credentials from environment variable
         credentials = self._setup_credentials()
@@ -200,9 +189,7 @@ class VertexAIClient:
     def generate_response(
         self, 
         messages: List[Dict[str, str]], 
-        system_prompt: Optional[str] = None,
-        role: str = "summary",
-        generation_config: Optional[Dict] = None
+        system_prompt: Optional[str] = None
     ) -> str:
         """
         Generate a response using Vertex AI Gemini with conversation context
@@ -210,8 +197,6 @@ class VertexAIClient:
         Args:
             messages: List of conversation messages [{"role": "user|assistant", "content": "..."}]
             system_prompt: Optional system prompt to guide the conversation
-            role: Role type - "summary" for summaries, anything else for interviews
-            generation_config: Optional custom generation config (temperature, max_tokens, etc.)
             
         Returns:
             Generated response text
@@ -220,7 +205,7 @@ class VertexAIClient:
             # Build the full conversation context for Vertex AI
             conversation_text = ""
             
-            # Add system prompt if provided (contains all interview instructions)
+            # Add system prompt if provided
             if system_prompt:
                 conversation_text += f"SYSTEM INSTRUCTIONS:\n{system_prompt}\n\n"
             
@@ -228,44 +213,28 @@ class VertexAIClient:
             if messages:
                 conversation_text += "CONVERSATION HISTORY:\n"
                 for message in messages:
-                    role_msg = message["role"]
+                    role = message["role"]
                     content = message["content"]
                     
-                    if role_msg == "user":
+                    if role == "user":
                         conversation_text += f"Patient: {content}\n"
-                    elif role_msg == "assistant":
+                    elif role == "assistant":
                         conversation_text += f"Dr. O: {content}\n"
                 
-                # Add instruction based on role
-                if role == "summary":
-                    conversation_text += "\nPlease generate a comprehensive markdown summary of this occupational history interview."
+                # Add instruction for summary generation
+                conversation_text += "\nPlease generate a comprehensive markdown summary of this occupational history interview."
             else:
-                if role == "summary":
-                    conversation_text += "\nPlease generate a comprehensive markdown summary."
+                conversation_text += "\nPlease generate a comprehensive markdown summary."
             
-            # Use custom generation config or defaults based on role
-            if generation_config is None:
-                if role == "summary":
-                    # High consistency settings for summaries
-                    generation_config = {
-                        "temperature": 0.0,
-                        "max_output_tokens": 8192,
-                        "top_p": 1.0,
-                        "top_k": 1
-                    }
-                else:
-                    # Balanced settings for interviews
-                    generation_config = {
-                        "temperature": 0.6,
-                        "max_output_tokens": 800,
-                        "top_p": 0.8,
-                        "top_k": 40
-                    }
-            
-            # Generate response
+            # Generate response with highest consistency settings for summaries
             response = self.model.generate_content(
                 conversation_text,
-                generation_config=generation_config
+                generation_config={
+                    "temperature": 0.0,  # Lowest temperature for maximum consistency and determinism
+                    "max_output_tokens": 8192,  # Much higher token limit for detailed summaries
+                    "top_p": 1.0,  # Most deterministic sampling
+                    "top_k": 1  # Most deterministic token selection
+                }
             )
             
             return response.text.strip()
@@ -287,7 +256,6 @@ class VertexAIClient:
 # Create global client instances
 gemini_client = None
 vertex_ai_client = None
-vertex_ai_flash_client = None
 
 def get_gemini_client() -> GeminiClient:
     """Get or create the global Gemini client instance"""
@@ -296,16 +264,11 @@ def get_gemini_client() -> GeminiClient:
         gemini_client = GeminiClient()
     return gemini_client
 
-def get_vertex_ai_client(model_name: str = "gemini-2.5-pro") -> VertexAIClient:
+def get_vertex_ai_client() -> VertexAIClient:
     """Get or create the global Vertex AI client instance"""
-    global vertex_ai_client, vertex_ai_flash_client
-    
-    if model_name == "gemini-2.5-flash":
-        if vertex_ai_flash_client is None:
-            vertex_ai_flash_client = VertexAIClient(model_name="gemini-2.5-flash")
-        return vertex_ai_flash_client
-    else:
-        if vertex_ai_client is None:
-            vertex_ai_client = VertexAIClient(model_name="gemini-2.5-pro")
-        return vertex_ai_client
+    global vertex_ai_client
+    if vertex_ai_client is None:
+        vertex_ai_client = VertexAIClient()
+    return vertex_ai_client
+
 
