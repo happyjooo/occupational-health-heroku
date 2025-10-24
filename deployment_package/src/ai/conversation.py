@@ -366,16 +366,6 @@ class ConversationManager:
             system_prompt=doctor_prompt
         )
         
-        # 🔍 DEBUG: Print raw LLM output before any processing
-        print("="*80)
-        print("🔍 RAW LLM OUTPUT (Doctor Summary) - START")
-        print("="*80)
-        print(summary)
-        print("="*80)
-        print("🔍 RAW LLM OUTPUT (Doctor Summary) - END")
-        print(f"📏 Raw output length: {len(summary)} characters")
-        print("="*80)
-        
         return summary
     
     def is_interview_complete(self, message_content: str) -> bool:
